@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LINKTREET - Social Media Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    .animate-rotate { animation: rotate 20s linear infinite; }
+    .star { position: absolute; background: white; border-radius: 50%; animation: pulse 3s infinite; }
+    .cropper-container { max-height: 400px; }
+    .vip-border { position: relative; }
+    .vip-border::before {
+      content: ""; position: absolute; inset: -8px; border-radius: 50%; padding: 4px;
+      background: linear-gradient(45deg, #ffd700, #ffed4e, #ffd700);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; animation: rotate 3s linear infinite;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-black via-gray-900 to-blue-900 text-white min-h-screen">
+  <!-- Stars Background -->
+  <div id="stars" class="fixed inset-0 overflow-hidden pointer-events-none"></div>
+
+  <!-- Header -->
+  <header class="relative z-10 flex justify-between items-center px-6 py-4">
+    <button onclick="showLogin()" class="p-2 hover:bg-white/10 rounded-lg transition" title="Login">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+    </button>
+    <h1 id="headerTitle" class="text-2xl font-bold text-blue-400 absolute left-1/2 -translate-x-1/2">LINKTREET</h1>
+    <button onclick="showSettings()" class="p-2 hover:bg-white/10 rounded-lg transition" title="Settings">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.39a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+    </button>
+  </header>
+
+  <!-- Main Content -->
+  <main class="relative z-10 flex flex-col items-center px-4 pb-20">
+    <!-- Profile Section -->
+    <div class="mt-8 mb-6">
+      <div id="profilePicContainer" class="w-32 h-32 rounded-full flex items-center justify-center overflow-hidden bg-gray-800 cursor-pointer transition-transform hover:scale-110" style="border: 4px solid #3b82f6;">
+        <svg id="defaultAvatar" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <img id="profilePic" class="w-full h-full object-cover hidden" alt="Profile" />
+      </div>
+    </div>
+
+    <h2 id="username" class="text-3xl font-bold mb-8 text-blue-400">Link Treet</h2>
+
+    <!-- Admin Mode Toggle -->
+    <label id="adminToggle" class="mb-4 hidden flex items-center gap-2 cursor-pointer bg-gray-800/50 px-4 py-2 rounded-lg">
+      <input type="checkbox" id="adminMode" class="w-5 h-5" onchange="toggleAdmin()" />
+      <span class="text-sm">🔧 Admin Mode (Tester)</span>
+    </label>
+
+    <!-- Add Link Button -->
+    <button id="addLinkBtn" onclick="showAddLink()" class="mb-6 hidden px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition shadow-lg" style="background-color: #3b82f6;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+      </svg>
+      <span>Tambahkan Link Baru</span>
+    </button>
+
+    <!-- Links Container -->
+    <div id="linksContainer" class="w-full max-w-md space-y-4"></div>
+
+    <p id="footerHandle" class="mt-12 text-sm text-gray-500">@amdwhy</p>
+  </main>
+
+  <!-- Floating Buttons -->
+  <div class="fixed bottom-6 right-6 flex flex-col gap-3 z-40">
+    <!-- Mute Button -->
+    <button id="muteBtn" onclick="toggleMute()" class="w-14 h-14 bg-purple-500 rounded-full shadow-lg flex items-center justify-center transition hover:scale-110" title="Mute">
+      <svg id="muteIcon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+      </svg>
+    </button>
+
+    <!-- Analytics Button (VIP Only) -->
+    <button id="analyticsBtn" onclick="toggleAnalytics()" class="hidden w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition hover:scale-110" style="background-color: #3b82f6;" title="Analytics">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+        <line x1="12" y1="20" x2="12" y2="10" />
+        <line x1="18" y1="20" x2="18" y2="4" />
+        <line x1="6" y1="20" x2="6" y2="16" />
+      </svg>
+    </button>
+
+    <!-- Support Button -->
+    <button onclick="showSupportPopup()" class="w-14 h-14 bg-green-500 rounded-full shadow-lg flex items-center justify-center transition hover:scale-110" title="Support">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Audio Player (Hidden) -->
+  <audio id="bgMusic" loop></audio>
+
+  <!-- Settings Popup -->
+  <div id="settingsPopup" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
+    <div class="bg-gray-900 rounded-2xl p-6 w-full max-w-md relative max-h-[90vh] overflow-y-auto shadow-2xl">
+      <button onclick="closeSettings()" class="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition" aria-label="Close settings">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+
+      <h3 class="text-2xl font-bold mb-6">Pengaturan</h3>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm mb-2 font-semibold">Username</label>
+          <input type="text" id="newUsername" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+
+        <div>
+          <label class="block text-sm mb-2 font-semibold">Foto Profil</label>
+          <input type="file" id="profilePicInput" accept="image/*" class="w-full px-4 py-2 bg-gray-800 rounded-lg text-sm" />
+        </div>
+
+        <div>
+          <label class="block text-sm mb-2 font-semibold">Background Color</label>
+          <select id="bgSelect" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" onchange="changeBg()">
+            <option value="black-blue">Black Blue</option>
+            <option value="purple-pink">Purple Pink</option>
+            <option value="teal-cyan">Teal Cyan</option>
+            <option value="dark-green">Dark Green</option>
+          </select>
+        </div>
+
+        <!-- VIP Custom Color -->
+        <div id="vipColorSection" class="hidden">
+          <label class="block text-sm mb-2 font-semibold">Custom Color (VIP)</label>
+          <div class="flex gap-2">
+            <input type="color" id="customColor" value="#3b82f6" class="w-16 h-10 rounded cursor-pointer" onchange="updateCustomColor()" />
+            <input type="text" id="colorHex" value="#3b82f6" class="flex-1 px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" onchange="updateCustomColorFromHex()" />
+          </div>
+        </div>
+
+        <!-- VIP Custom Theme (optional) -->
+        <div id="vipThemeSection" class="hidden space-y-3">
+          <label class="block text-sm mb-2 font-semibold">Custom Color Theme (VIP)</label>
+          <div class="flex gap-2">
+            <button onclick="setThemeMode('solid')" id="themeSolid" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">Solid Color</button>
+            <button onclick="setThemeMode('gradient')" id="themeGradient" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">Gradient</button>
+          </div>
+          <div id="gradientColors" class="hidden space-y-2">
+            <div class="flex gap-2">
+              <input type="color" id="gradientColor1" value="#3b82f6" class="w-16 h-10 rounded cursor-pointer" onchange="updateThemeGradient()" />
+              <input type="text" id="gradientHex1" value="#3b82f6" class="flex-1 px-4 py-2 bg-gray-800 rounded-lg" />
+            </div>
+            <div class="flex gap-2">
+              <input type="color" id="gradientColor2" value="#8b5cf6" class="w-16 h-10 rounded cursor-pointer" onchange="updateThemeGradient()" />
+              <input type="text" id="gradientHex2" value="#8b5cf6" class="flex-1 px-4 py-2 bg-gray-800 rounded-lg" />
+            </div>
+          </div>
+        </div>
+
+        <!-- VIP Features -->
+        <div id="vipFeatures" class="hidden space-y-4 pt-4 border-t border-gray-700">
+          <div>
+            <label class="block text-sm mb-2 font-semibold">🎵 Background Music (VIP)</label>
+            <input type="file" id="musicFile" accept="audio/*" class="w-full px-4 py-2 bg-gray-800 rounded-lg text-sm mb-2" />
+            <div class="flex gap-2">
+              <button id="musicToggle" onclick="toggleMusic()" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">Play Music</button>
+            </div>
+            <p class="text-xs text-gray-400">Music will auto-play on page load (if allowed)</p>
+          </div>
+
+          <div>
+            <label class="block text-sm mb-2 font-semibold">🖼️ Custom Background (VIP)</label>
+            <input type="file" id="customBgFile" accept="image/*" class="w-full px-4 py-2 bg-gray-800 rounded-lg text-sm mb-2" />
+            <div class="flex gap-2">
+              <button onclick="setBgViewMode('device')" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">Device View</button>
+              <button onclick="setBgViewMode('desktop')" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">Desktop View</button>
+              <button onclick="resetCustomBg()" class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg">Reset</button>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="saveSettings()" class="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold transition shadow-lg">
+          Simpan Pengaturan
+        </button>
+
+        <button id="logoutBtn" onclick="logout()" class="w-full hidden px-6 py-3 bg-red-500 hover:bg-red-600 rounded-lg font-semibold transition shadow-lg">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Crop Popup -->
+  <div id="cropPopup" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
+    <div class="bg-gray-900 rounded-2xl p-6 w-full max-w-2xl relative shadow-2xl">
+      <button onclick="closeCropPopup()" class="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition" aria-label="Close cropper">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <h3 class="text-2xl font-bold mb-6">Crop Gambar</h3>
+      <div class="mb-4"><img id="cropImage" style="max-width: 100%;" /></div>
+      <button onclick="applyCrop()" class="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold transition shadow-lg">Terapkan Crop</button>
+    </div>
+  </div>
+
+  <!-- Login Popup -->
+  <div id="loginPopup" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
+    <div class="bg-gray-900 rounded-2xl p-6 w-full max-w-md relative shadow-2xl">
+      <button onclick="closeLogin()" class="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition" aria-label="Close login">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <h3 class="text-2xl font-bold mb-6">Login</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm mb-2 font-semibold">Username or Email</label>
+          <input type="text" id="loginUsername" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm mb-2 font-semibold">Password</label>
+          <input type="password" id="loginPassword" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+        <button onclick="login()" class="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold transition shadow-lg">Masuk</button>
+        <p class="text-center text-sm text-gray-400">Belum punya akun? <button onclick="switchToRegister()" class="text-blue-400 hover:underline font-semibold">Daftar disini</button></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register Popup -->
+  <div id="registerPopup" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
+    <div class="bg-gray-900 rounded-2xl p-6 w-full max-w-md relative shadow-2xl">
+      <button onclick="closeRegister()" class="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition" aria-label="Close register">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <h3 class="text-2xl font-bold mb-6">Daftar Akun Baru</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm mb-2 font-semibold">Username</label>
+          <input type="text" id="regUsername" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm mb-2 font-semibold">Email</label>
+          <input type="email" id="regEmail" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="email@example.com" />
+        </div>
+        <div>
+          <label class="block text-sm mb-2 font-semibold">Password</label>
+          <input type="password" id="regPassword" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+        <button onclick="register()" class="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold transition shadow-lg">Daftar Sekarang</button>
+        <p class="text-center text-sm text-gray-400">Sudah punya akun? <button onclick="switchToLogin()" class="text-blue-400 hover:underline font-semibold">Login disini</button></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Link Popup -->
+  <div id="linkPopup" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
+    <div class="bg-gray-900 rounded-2xl p-6 w-full max-w-md relative shadow-2xl max-h-[90vh] overflow-y-auto">
+      <button onclick="closeLinkPopup()" class="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition" aria-label="Close link form">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <h3 id="linkPopupTitle" class="text-2xl font-bold mb-6">➕ Tambah Link Baru</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm mb-2 font-semibold">Judul Link</label>
+          <input type="text" id="linkTitle" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm mb-2 font-semibold">URL Link</label>
+          <input type="url" id="linkUrl" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://example.com" />
+        </div>
+        <div>
+          <label class="block text-sm mb-2 font-semibold">Pilih Ikon</label>
+          <select id="linkIcon" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" onchange="updateIconPreview()">
+            <optgroup label="Social Media">
+              <option value="instagram">Instagram</option>
+              <option value="youtube">YouTube</option>
+              <option value="twitter">Twitter</option>
+              <option value="facebook">Facebook</option>
+              <option value="tiktok">TikTok</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="telegram">Telegram</option>
+              <option value="discord">Discord</option>
+            </optgroup>
+            <optgroup label="E-Commerce">
+              <option value="shopee">Shopee</option>
+              <option value="tokopedia">Tokopedia</option>
+              <option value="bukalapak">Bukalapak</option>
+              <option value="lazada">Lazada</option>
+            </optgroup>
+            <optgroup label="Other">
+              <option value="website">Website</option>
+              <option value="email">Email</option>
+              <option value="phone">Phone</option>
+              <option value="github">GitHub</option>
+              <option value="spotify">Spotify</option>
+              <option value="roblox">Roblox Private Server</option>
+            </optgroup>
+          </select>
+          <div class="mt-2 text-center">
+            <div id="iconPreview" class="inline-block"></div>
+            <p class="text-xs text-gray-400 mt-1">Preview Ikon</p>
+          </div>
+        </div>
+        <button onclick="saveLink()" class="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold transition shadow-lg"><span id="saveLinkText">Tambahkan Link</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Popup -->
+  <div id="deletePopup" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
+    <div class="bg-gray-900 rounded-2xl p-6 w-full max-w-sm relative shadow-2xl text-center">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" class="mx-auto mb-4">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+      </svg>
+      <h3 class="text-xl font-bold mb-2">Hapus Link?</h3>
+      <p class="text-sm text-gray-400 mb-6">Link akan dihapus permanen</p>
+      <div class="flex gap-3">
+        <button onclick="closeDeletePopup()" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition">Batal</button>
+        <button onclick="confirmDelete()" class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-semibold transition">Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIP Popup -->
+  <div id="vipPopup" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
+    <div class="bg-gradient-to-br from-yellow-600 to-yellow-800 rounded-2xl p-8 w-full max-w-md relative text-center shadow-2xl">
+      <button onclick="closeVipPopup()" class="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition" aria-label="Close VIP">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <h3 class="text-3xl font-bold mb-6">VIP</h3>
+      <p class="text-sm opacity-90 mb-6">Fitur VIP akan segera hadir dengan berbagai keuntungan eksklusif!</p>
+      <div class="bg-white/10 rounded-lg p-4 text-left text-sm">
+        <p class="font-semibold mb-3">Fitur VIP:</p>
+        <ul class="space-y-2">
+          <li class="flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Custom Color untuk Link</li>
+          <li class="flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>Analitik Link</li>
+          <li class="flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/></svg>Link Tak Terbatas</li>
+          <li class="flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Priority Support</li>
+          <li class="flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 18V5l12-2v13M9 13l12-2"/></svg>Background Music</li>
+          <li class="flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Custom Background</li>
+          <li class="flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Custom Color Theme</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Support Popup -->
+  <div id="supportPopup" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
+    <div class="bg-gray-900 rounded-2xl p-6 w-full max-w-md relative shadow-2xl">
+      <button onclick="closeSupportPopup()" class="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition" aria-label="Close support">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <h3 class="text-2xl font-bold mb-2">💬 Support</h3>
+      </div>
+
+      <div id="supportMessages" class="bg-gray-800 rounded-lg p-4 mb-4 max-h-64 overflow-y-auto">
+        <div class="flex gap-3 mb-3">
+          <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0"><span class="text-sm font-bold">T</span></div>
+          <div class="flex-1">
+            <div class="bg-gray-700 rounded-lg p-3">
+              <p class="text-sm font-semibold mb-1">Treets Bot</p>
+              <p class="text-sm">Halo! Saya Treets, bot asisten. Silakan tulis pesan Anda dan tim support kami akan merespons dalam 1x24 jam. Terima kasih!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-sm mb-2 font-semibold">Nama</label>
+          <input type="text" id="supportName" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm mb-2 font-semibold">Email</label>
+          <input type="email" id="supportEmail" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" placeholder="email@example.com" />
+        </div>
+        <div>
+          <label class="block text-sm mb-2 font-semibold">Pesan</label>
+          <textarea id="supportMessage" rows="4" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-green-500 outline-none resize-none"></textarea>
+        </div>
+        <button onclick="submitSupport()" class="w-full px-6 py-3 bg-green-500 hover:bg-green-600 rounded-lg font-semibold transition shadow-lg">Kirim Pesan</button>
+        <p class="text-xs text-center text-gray-400">Atau email langsung ke: <a href="mailto:treetlink@gmail.com" class="text-green-400 hover:underline">treetlink@gmail.com</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Analytics Popup (with toggle-able close & backdrop close) -->
+  <div id="analyticsPopup" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4" onclick="backdropCloseAnalytics(event)">
+    <div id="analyticsCard" class="bg-gray-900 rounded-2xl p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto relative shadow-2xl" onclick="event.stopPropagation()">
+      <button onclick="closeAnalytics()" class="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition" aria-label="Close analytics">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <h3 class="text-2xl font-bold mb-6">📊 Analytics</h3>
+      <div class="w-full h-[420px]">
+        <canvas id="analyticsChartCanvas" class="w-full h-full"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------------- Icons ----------------
+    const iconSvgs = {
+      instagram:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>',
+      youtube:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>',
+      twitter:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg>',
+      facebook:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>',
+      tiktok:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>',
+      linkedin:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>',
+      whatsapp:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
+      telegram:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
+      discord:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 12h.01M15 12h.01M9 16h6m-9 4l1-4m14 4l-1-4m-1-10H6a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3z"/></svg>',
+      shopee:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>',
+      tokopedia:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>',
+      bukalapak:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>',
+      lazada:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>',
+      website:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+      email:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+      phone:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+      github:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>',
+      spotify:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 15s1.5-1 4-1 4 1 4 1m-8-3s2-1 4-1 4 1 4 1m-8-3s2.5-1 4-1 4 1 4 1"/></svg>',
+      roblox:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" transform="rotate(45 12 12)"/><circle cx="12" cy="12" r="3"/></svg>'
+    };
+
+    // ---------------- State ----------------
+    let state = {
+      isLoggedIn: false,
+      isAdmin: false,
+      isVip: false,
+      username: 'Link Treet',
+      profilePic: '',
+      customColor: '#3b82f6',
+      bgGradient: 'black-blue',
+      themeMode: 'solid',
+      gradientColor1: '#3b82f6',
+      gradientColor2: '#8b5cf6',
+      links: [],
+      editingIndex: -1,
+      deletingIndex: -1,
+      cropper: null,
+      musicPlaying: false,
+      bgViewMode: 'device',
+      analyticsData: {},
+      currentLang: 'id',
+      users: [ { username: 'admin', email: 'admin@linktreet.com', password: 'LinkTr33t@dmin2024!', isVip: true } ]
+    };
+
+    // AVOID ID-TO-WINDOW NAME CLASH: store chart instance in a distinct variable
+    let analyticsChartInstance = null;
+
+    // ---------------- Init ----------------
+    function init() {
+      createStars();
+      renderLinks();
+      updateUsername();
+      applyBgGradient();
+      detectLanguage();
+      setTimeout(() => { showVipPopup(); }, 1000); // demo only
+      autoPlayMusic();
+
+      // --- Simple runtime self-tests (do not change existing behavior) ---
+      try {
+        console.assert(typeof showLogin === 'function', 'showLogin should be defined');
+        console.assert(typeof toggleAnalytics === 'function', 'toggleAnalytics should be defined');
+      } catch (e) { console.warn('Self-test warning:', e); }
+    }
+
+    function detectLanguage() {
+      const userLang = navigator.language || navigator.userLanguage;
+      state.currentLang = userLang && userLang.startsWith('id') ? 'id' : 'en';
+    }
+
+    // ---------------- Background & Theme ----------------
+    function createStars() {
+      const starsContainer = document.getElementById('stars');
+      for (let i = 0; i < 50; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        star.style.width = Math.random() * 3 + 1 + 'px';
+        star.style.height = star.style.width;
+        star.style.top = Math.random() * 100 + '%';
+        star.style.left = Math.random() * 100 + '%';
+        star.style.animationDelay = Math.random() * 3 + 's';
+        star.style.animationDuration = Math.random() * 2 + 2 + 's';
+        starsContainer.appendChild(star);
+      }
+    }
+
+    function applyBgGradient() {
+      const gradients = {
+        'black-blue': 'from-black via-gray-900 to-blue-900',
+        'purple-pink': 'from-purple-900 via-pink-900 to-rose-900',
+        'teal-cyan': 'from-teal-900 via-cyan-900 to-blue-900',
+        'dark-green': 'from-gray-900 via-green-900 to-gray-800'
+      };
+      document.body.className = `bg-gradient-to-b ${gradients[state.bgGradient]} text-white min-h-screen`;
+    }
+
+    function changeBg() {
+      state.bgGradient = document.getElementById('bgSelect').value;
+      applyBgGradient();
+    }
+
+    function updateCustomColor() {
+      const color = document.getElementById('customColor').value;
+      state.customColor = color;
+      document.getElementById('colorHex').value = color;
+      applyCustomColor();
+    }
+
+    function updateCustomColorFromHex() {
+      const color = document.getElementById('colorHex').value;
+      state.customColor = color;
+      document.getElementById('customColor').value = color;
+      applyCustomColor();
+    }
+
+    function applyCustomColor() {
+      const title = document.getElementById('headerTitle');
+      const uname = document.getElementById('username');
+      const pic = document.getElementById('profilePicContainer');
+      const addBtn = document.getElementById('addLinkBtn');
+      const analyticsBtn = document.getElementById('analyticsBtn');
+      if (title) title.style.color = state.customColor;
+      if (uname) uname.style.color = state.customColor;
+      if (pic) pic.style.borderColor = state.customColor;
+      if (addBtn) addBtn.style.backgroundColor = state.customColor;
+      if (analyticsBtn) analyticsBtn.style.backgroundColor = state.customColor;
+      renderLinks();
+    }
+
+    function setThemeMode(mode) {
+      state.themeMode = mode;
+      const gc = document.getElementById('gradientColors');
+      if (gc) gc.classList.toggle('hidden', mode !== 'gradient');
+      updateThemeGradient();
+    }
+
+    function updateThemeGradient() {
+      if (state.themeMode !== 'gradient') return;
+      const c1 = document.getElementById('gradientColor1').value; state.gradientColor1 = c1; document.getElementById('gradientHex1').value = c1;
+      const c2 = document.getElementById('gradientColor2').value; state.gradientColor2 = c2; document.getElementById('gradientHex2').value = c2;
+      document.body.style.backgroundImage = `linear-gradient(to bottom, ${c1}, ${c2})`;
+      document.body.style.backgroundAttachment = 'fixed';
+      document.body.style.backgroundSize = 'cover';
+    }
+
+    // ---------------- Links ----------------
+    function renderLinks() {
+      const container = document.getElementById('linksContainer');
+      container.innerHTML = '';
+      if (state.links.length === 0) return;
+      state.links.forEach((link, index) => {
+        const linkEl = document.createElement('div');
+        linkEl.className = 'relative group';
+        linkEl.innerHTML = `
+          <a href="${link.url}" target="_blank" rel="noopener noreferrer" onclick="trackClick(${index})" class="flex items-center gap-4 px-6 py-4 rounded-full transition transform hover:scale-105 shadow-lg relative" style="background-color: ${state.customColor};">
+            <div class="flex items-center justify-center">${iconSvgs[link.icon] || iconSvgs.website}</div>
+            <span class="font-semibold flex-1">${link.title}</span>
+            ${(state.isLoggedIn || state.isAdmin) ? `
+              <button onclick="event.preventDefault(); event.stopPropagation(); editLink(${index})" class="p-2 bg-yellow-500 hover:bg-yellow-600 rounded-lg shadow-lg z-10">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button onclick="event.preventDefault(); event.stopPropagation(); showDeletePopup(${index})" class="p-2 bg-red-500 hover:bg-red-600 rounded-lg shadow-lg ml-2 z-10">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>` : ''}
+          </a>`;
+        container.appendChild(linkEl);
+      });
+    }
+
+    function trackClick(index) {
+      if (!state.analyticsData[index]) state.analyticsData[index] = [];
+      const today = new Date().toISOString().split('T')[0];
+      const existing = state.analyticsData[index].find(d => d.date === today);
+      if (existing) existing.clicks++; else state.analyticsData[index].push({ date: today, clicks: 1 });
+    }
+
+    function updateUsername() { document.getElementById('username').textContent = state.username; }
+
+    function toggleAdmin() {
+      state.isAdmin = document.getElementById('adminMode').checked;
+      renderLinks();
+      document.getElementById('addLinkBtn').classList.toggle('hidden', !state.isAdmin && !state.isLoggedIn);
+    }
+
+    // ---------------- Auth ----------------
+    function login() {
+      const usernameOrEmail = document.getElementById('loginUsername').value;
+      const password = document.getElementById('loginPassword').value;
+      if (!usernameOrEmail || !password) { alert('⚠️ Username/Email dan password harus diisi!'); return; }
+      const user = state.users.find(u => (u.username === usernameOrEmail || u.email === usernameOrEmail) && u.password === password);
+      if (user) {
+        state.isLoggedIn = true; state.isVip = user.isVip; state.username = user.username;
+        closeLogin();
+        document.getElementById('adminToggle').classList.remove('hidden');
+        document.getElementById('addLinkBtn').classList.remove('hidden');
+        document.getElementById('logoutBtn').classList.remove('hidden');
+        if (state.isVip) {
+          document.getElementById('vipFeatures').classList.remove('hidden');
+          document.getElementById('vipColorSection').classList.remove('hidden');
+          document.getElementById('vipThemeSection').classList.remove('hidden');
+          document.getElementById('analyticsBtn').classList.remove('hidden');
+          document.getElementById('profilePicContainer').classList.add('vip-border');
+        }
+        updateUsername(); renderLinks(); applyCustomColor();
+        alert(`✅ Login berhasil! Selamat datang ${user.username}${user.isVip ? ' (VIP)' : ''}`);
+      } else { alert('❌ Username/Email atau password salah!'); }
+    }
+
+    function register() {
+      const username = document.getElementById('regUsername').value;
+      const email = document.getElementById('regEmail').value;
+      const password = document.getElementById('regPassword').value;
+      if (!username || !email || !password) { alert('⚠️ Semua field harus diisi!'); return; }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; if (!emailRegex.test(email)) { alert('⚠️ Format email tidak valid!'); return; }
+      if (state.users.find(u => u.username === username)) { alert('❌ Username sudah digunakan!'); return; }
+      if (state.users.find(u => u.email === email)) { alert('❌ Email sudah terdaftar!'); return; }
+      state.users.push({ username, email, password, isVip: false });
+      state.isLoggedIn = true; state.isVip = false; state.username = username;
+      closeRegister();
+      document.getElementById('adminToggle').classList.remove('hidden');
+      document.getElementById('addLinkBtn').classList.remove('hidden');
+      document.getElementById('logoutBtn').classList.remove('hidden');
+      updateUsername(); renderLinks();
+      alert(`✅ Registrasi berhasil! Selamat datang ${username}`);
+    }
+
+    function logout() {
+      state.isLoggedIn = false; state.isAdmin = false; state.isVip = false;
+      document.getElementById('adminMode').checked = false;
+      document.getElementById('adminToggle').classList.add('hidden');
+      document.getElementById('addLinkBtn').classList.add('hidden');
+      document.getElementById('logoutBtn').classList.add('hidden');
+      document.getElementById('vipFeatures').classList.add('hidden');
+      document.getElementById('vipColorSection').classList.add('hidden');
+      document.getElementById('vipThemeSection').classList.add('hidden');
+      document.getElementById('analyticsBtn').classList.add('hidden');
+      document.getElementById('profilePicContainer').classList.remove('vip-border');
+      closeSettings(); renderLinks();
+    }
+
+    // ---------------- Settings & Profile Pic ----------------
+    function saveSettings() {
+      const newUsername = document.getElementById('newUsername').value;
+      if (newUsername) { state.username = newUsername; updateUsername(); }
+      if (state.isVip) { state.customColor = document.getElementById('customColor').value; applyCustomColor(); }
+      closeSettings();
+    }
+
+    document.getElementById('profilePicInput').addEventListener('change', function(e) {
+      const file = e.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const cropImage = document.getElementById('cropImage');
+        cropImage.src = event.target.result;
+        document.getElementById('cropPopup').classList.remove('hidden');
+        document.getElementById('cropPopup').classList.add('flex');
+        if (state.cropper) state.cropper.destroy();
+        state.cropper = new Cropper(cropImage, { aspectRatio: 1, viewMode: 1, dragMode: 'move', autoCropArea: 1, restore: false, guides: true, center: true, highlight: false, cropBoxMovable: true, cropBoxResizable: true, toggleDragModeOnDblclick: false });
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function applyCrop() {
+      if (!state.cropper) return;
+      const canvas = state.cropper.getCroppedCanvas({ width: 400, height: 400 });
+      state.profilePic = canvas.toDataURL();
+      document.getElementById('profilePic').src = state.profilePic;
+      document.getElementById('profilePic').classList.remove('hidden');
+      document.getElementById('defaultAvatar').classList.add('hidden');
+      closeCropPopup();
+    }
+
+    function closeCropPopup() {
+      if (state.cropper) { state.cropper.destroy(); state.cropper = null; }
+      document.getElementById('cropPopup').classList.add('hidden');
+    }
+
+    // ---------------- Music & Custom BG ----------------
+    function toggleMute() {
+      const audio = document.getElementById('bgMusic');
+      audio.muted = !audio.muted;
+    }
+
+    function autoPlayMusic() {
+      const audio = document.getElementById('bgMusic');
+      if (!state.isVip) return;
+      if (audio.src) {
+        audio.play().catch(()=>{});
+      }
+    }
+
+    function toggleMusic() {
+      const audio = document.getElementById('bgMusic');
+      const musicFile = document.getElementById('musicFile').files[0];
+      const btn = document.getElementById('musicToggle');
+      if (!state.musicPlaying) {
+        if (musicFile) {
+          const reader = new FileReader();
+          reader.onload = e => {
+            audio.src = e.target.result; audio.play(); state.musicPlaying = true; if (btn) btn.textContent = 'Stop Music';
+          };
+          reader.readAsDataURL(musicFile);
+        } else { alert('⚠️ Pilih file audio terlebih dahulu!'); }
+      } else { audio.pause(); state.musicPlaying = false; if (btn) btn.textContent = 'Play Music'; }
+    }
+
+    document.getElementById('customBgFile').addEventListener('change', function(e){
+      const file = e.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        document.body.style.backgroundImage = `url(${event.target.result})`;
+        document.body.style.backgroundSize = 'cover';
+        document.body.style.backgroundPosition = 'center';
+        document.body.style.backgroundAttachment = 'fixed';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function setBgViewMode(mode) {
+      state.bgViewMode = mode;
+      if (mode === 'desktop') { document.body.style.backgroundSize = 'contain'; }
+      else { document.body.style.backgroundSize = 'cover'; }
+    }
+
+    function resetCustomBg() {
+      document.body.style.backgroundImage = '';
+      applyBgGradient();
+    }
+
+    // ---------------- Popups Show/Hide ----------------
+    function showLogin() { document.getElementById('loginPopup').classList.remove('hidden'); document.getElementById('loginPopup').classList.add('flex'); }
+    function closeLogin() { document.getElementById('loginPopup').classList.add('hidden'); }
+    function showSettings() {
+      document.getElementById('newUsername').value = state.username;
+      document.getElementById('bgSelect').value = state.bgGradient;
+      document.getElementById('customColor').value = state.customColor;
+      document.getElementById('colorHex').value = state.customColor;
+      document.getElementById('settingsPopup').classList.remove('hidden');
+      document.getElementById('settingsPopup').classList.add('flex');
+    }
+    function closeSettings() { document.getElementById('settingsPopup').classList.add('hidden'); }
+    function switchToRegister() { closeLogin(); document.getElementById('registerPopup').classList.remove('hidden'); document.getElementById('registerPopup').classList.add('flex'); }
+    function closeRegister() { document.getElementById('registerPopup').classList.add('hidden'); }
+    function switchToLogin() { closeRegister(); showLogin(); }
+    function showAddLink() {
+      if (!state.isVip && state.links.length >= 3) { alert('⚠️ Limit tercapai! Upgrade ke VIP untuk menambah link tanpa batas.'); return; }
+      state.editingIndex = -1;
+      document.getElementById('linkPopupTitle').textContent = '➕ Tambah Link Baru';
+      document.getElementById('saveLinkText').textContent = 'Tambahkan Link';
+      document.getElementById('linkTitle').value = '';
+      document.getElementById('linkUrl').value = '';
+      document.getElementById('linkIcon').value = 'instagram';
+      updateIconPreview();
+      document.getElementById('linkPopup').classList.remove('hidden');
+      document.getElementById('linkPopup').classList.add('flex');
+    }
+    function closeLinkPopup() { document.getElementById('linkPopup').classList.add('hidden'); }
+    function showVipPopup() { document.getElementById('vipPopup').classList.remove('hidden'); document.getElementById('vipPopup').classList.add('flex'); }
+    function closeVipPopup() { document.getElementById('vipPopup').classList.add('hidden'); }
+
+    function showSupportPopup() {
+      if (state.isLoggedIn) {
+        const user = state.users.find(u => u.username === state.username);
+        if (user && user.email) { document.getElementById('supportEmail').value = user.email; }
+        document.getElementById('supportName').value = state.username;
+      }
+      document.getElementById('supportPopup').classList.remove('hidden');
+      document.getElementById('supportPopup').classList.add('flex');
+    }
+    function closeSupportPopup() {
+      document.getElementById('supportPopup').classList.add('hidden');
+      document.getElementById('supportName').value = '';
+      document.getElementById('supportEmail').value = '';
+      document.getElementById('supportMessage').value = '';
+    }
+
+    function submitSupport() {
+      const name = document.getElementById('supportName').value;
+      const email = document.getElementById('supportEmail').value;
+      const message = document.getElementById('supportMessage').value;
+      if (!name || !email || !message) { alert('⚠️ Semua field harus diisi!'); return; }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; if (!emailRegex.test(email)) { alert('⚠️ Format email tidak valid!'); return; }
+      const priority = state.isVip ? '[VIP PRIORITY] ' : '';
+      const subject = `${priority}Support Request from ${name}`;
+      const body = `Name: ${name}\nEmail: ${email}\n${state.isVip ? 'VIP Member: Yes\n' : ''}\nMessage:\n${message}`;
+      const mailtoLink = `mailto:treetlink@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailtoLink;
+      alert(state.currentLang === 'id' ? '✅ Pesan terkirim! Tim kami akan merespons dalam 1x24 jam.' : '✅ Message sent! Our team will respond within 24 hours.');
+      closeSupportPopup();
+    }
+
+    // ---------------- Links CRUD helpers ----------------
+    function updateIconPreview() {
+      const icon = document.getElementById('linkIcon').value;
+      document.getElementById('iconPreview').innerHTML = iconSvgs[icon] || iconSvgs.website;
+    }
+
+    function saveLink() {
+      const title = document.getElementById('linkTitle').value;
+      const url = document.getElementById('linkUrl').value;
+      const icon = document.getElementById('linkIcon').value;
+      if (!title || !url) { alert('⚠️ Judul dan URL harus diisi!'); return; }
+      if (state.editingIndex < 0 && !state.isVip && state.links.length >= 3) {
+        alert('⚠️ Limit tercapai! Upgrade ke VIP untuk menambah link tanpa batas.');
+        closeLinkPopup();
+        return;
+      }
+      if (state.editingIndex >= 0) {
+        state.links[state.editingIndex] = { title, url, icon };
+      } else {
+        state.links.push({ title, url, icon });
+        state.analyticsData[state.links.length - 1] = [];
+      }
+      renderLinks();
+      closeLinkPopup();
+    }
+
+    function editLink(index) {
+      state.editingIndex = index;
+      const link = state.links[index];
+      document.getElementById('linkPopupTitle').textContent = '✏️ Edit Link';
+      document.getElementById('saveLinkText').textContent = 'Simpan Perubahan';
+      document.getElementById('linkTitle').value = link.title;
+      document.getElementById('linkUrl').value = link.url;
+      document.getElementById('linkIcon').value = link.icon;
+      updateIconPreview();
+      document.getElementById('linkPopup').classList.remove('hidden');
+      document.getElementById('linkPopup').classList.add('flex');
+    }
+
+    function showDeletePopup(index) {
+      state.deletingIndex = index;
+      document.getElementById('deletePopup').classList.remove('hidden');
+      document.getElementById('deletePopup').classList.add('flex');
+    }
+
+    function closeDeletePopup() {
+      state.deletingIndex = -1;
+      document.getElementById('deletePopup').classList.add('hidden');
+    }
+
+    function confirmDelete() {
+      if (state.deletingIndex >= 0) {
+        state.links.splice(state.deletingIndex, 1);
+        renderLinks();
+        closeDeletePopup();
+      }
+    }
+
+    // ---------------- Analytics ----------------
+    function toggleAnalytics() {
+      const p = document.getElementById('analyticsPopup');
+      const hidden = p.classList.contains('hidden');
+      if (hidden) { openAnalytics(); } else { closeAnalytics(); }
+    }
+
+    function openAnalytics() {
+      if (!state.isVip) { alert(state.currentLang === 'id' ? '⚠️ Analytics hanya untuk VIP member!' : '⚠️ Analytics only for VIP members!'); return; }
+      document.getElementById('analyticsPopup').classList.remove('hidden');
+      document.getElementById('analyticsPopup').classList.add('flex');
+      renderAnalyticsChart();
+    }
+
+    function backdropCloseAnalytics(e) {
+      if (e.target && e.target.id === 'analyticsPopup') closeAnalytics();
+    }
+
+    function closeAnalytics() {
+      document.getElementById('analyticsPopup').classList.add('hidden');
+      if (analyticsChartInstance && typeof analyticsChartInstance.destroy === 'function') {
+        analyticsChartInstance.destroy();
+        analyticsChartInstance = null;
+      }
+    }
+
+    function renderAnalyticsChart() {
+      // Prepare labels (last 7 days) and datasets from state.analyticsData
+      const labels = [];
+      const today = new Date();
+      const dates = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const iso = d.toISOString().split('T')[0];
+        dates.push(iso);
+        labels.push(d.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }));
+      }
+
+      const datasets = (state.links || []).map((link, index) => {
+        const data = state.analyticsData[index] || [];
+        const clicksByDate = Object.fromEntries(data.map(d => [d.date, d.clicks]));
+        const clicks = dates.map(dt => clicksByDate[dt] || 0);
+        return {
+          label: link.title,
+          data: clicks,
+          borderColor: state.customColor,
+          backgroundColor: state.customColor + '33',
+          tension: 0.4,
+        };
+      });
+
+      const ctx = document.getElementById('analyticsChartCanvas').getContext('2d');
+      if (analyticsChartInstance && typeof analyticsChartInstance.destroy === 'function') {
+        analyticsChartInstance.destroy();
+      }
+      analyticsChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: 'white' } } },
+          scales: {
+            y: { beginAtZero: true, ticks: { color: 'white', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.1)' } },
+            x: { ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+          }
+        }
+      });
+    }
+
+    // ---------------- Boot ----------------
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
